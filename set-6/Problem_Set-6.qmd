@@ -15,27 +15,375 @@ For source files and data, see my GitHub repo: [STATS-506-Problem-Sets-06](https
 
 ## Problem 1
 
+Set up
+```{r setup-p1}
+# load library
+library(Rcpp)
+library(e1071)
+```
+
+### C_moment Function
+```{r p1}
+# C_moment function
+cppFunction('
+double C_moment(NumericVector x, int k) {
+
+    int n = x.size();
+    double mean = 0.0;
+
+    // compute mean
+    for (int i = 0; i < n; i++) {
+        mean += x[i];
+    }
+    mean /= n;
+
+    // compute central moment
+    double moment = 0.0;
+    for (int i = 0; i < n; i++) {
+        moment += pow(x[i] - mean, k);
+    }
+
+    // divide by n
+    return moment / n;
+}
+')
+```
+
+### Test
+```{r test}
+set.seed(1)
+x <- rnorm(100)
+k <- 4
+
+C_moment(x, k)
+moment(x, order = k, center = TRUE)
+```
+
+
 ## Problem 2
 
 ### problem 2-a
 ```{r p2a}
+# `waldCI` from solution
+setClass("waldCI", 
+         slots = c(level = "numeric", mean = "numeric", sterr = "numeric")
+         )
 
+# inherit `waldCI`
+setClass(
+  "bootstrapWaldCI",
+  contains = "waldCI",
+  slots = c(
+    data = "ANY",
+    FUN = "function",
+    reps = "numeric",
+    compute = "character",
+    boot_samples = "numeric"
+  )
+)
+
+# Bootstrap CI
+.bootstrap_compute <- function(FUN, data, reps, compute = "serial") {
+  
+  if (compute == "serial") {
+    
+    # Serial bootstrap
+    boot_vals <- replicate(reps, {
+      idx <- sample(seq_len(nrow(data)), replace = TRUE)
+      FUN(data[idx, , drop = FALSE])
+    })
+    
+  } else if (compute == "parallel") {
+    library(parallel)
+    
+    # Create cluster
+    cl <- makeCluster(detectCores())
+    on.exit(stopCluster(cl), add = TRUE)
+    
+    # Export data and FUN to each worker
+    clusterExport(cl, varlist = c("data", "FUN"), envir = environment())
+    
+    # Perform bootstrap in parallel
+    boot_vals <- parSapply(cl, 1:reps, function(i) {
+      idx <- sample(seq_len(nrow(data)), replace = TRUE)
+      FUN(data[idx, , drop = FALSE])
+    })
+    
+  } else {
+    stop("compute must be 'serial' or 'parallel'")
+  }
+  
+  return(boot_vals)
+}
+
+
+# Constructor
+makeBootstrapCI <- function(FUN, data, reps = 1000,
+                            level = 0.95,
+                            compute = "serial") {
+  
+  # do initial bootstrap
+  boot_vals <- .bootstrap_compute(FUN, data, reps, compute)
+  
+  est <- mean(boot_vals)
+  se  <- sd(boot_vals)
+  
+  # call parent constructor
+  obj <- new("bootstrapWaldCI",
+             mean = est,
+             sterr = se,
+             level = level,
+             data = data,
+             FUN = FUN,
+             reps = reps,
+             compute = compute,
+             boot_samples = boot_vals)
+  
+  obj
+}
+
+# S4 Method
+setGeneric("rebootstrap", function(object) standardGeneric("rebootstrap"))
+
+setMethod("rebootstrap", "bootstrapWaldCI", function(object) {
+  
+  # redo bootstrap with same settings
+  boot_vals <- .bootstrap_compute(
+    FUN = object@FUN,
+    data = object@data,
+    reps = object@reps,
+    compute = object@compute
+  )
+  
+  object@boot_samples <- boot_vals
+  object@mean <- mean(boot_vals)
+  object@sterr <- sd(boot_vals)
+  
+  object
+})
 ```
 
 
 ### problem 2-b
 ```{r p2b}
+FUN <- function(x) mean(x$y)
+data <- ggplot2::diamonds
+reps <- 1000
 
+# serial
+time_serial <- system.time({
+  ci1 <- makeBootstrapCI(
+    FUN,
+    data,
+    reps = reps,
+    compute = "serial"
+  )
+})
+
+# parallel
+time_parallel <- system.time({
+  ci2 <- makeBootstrapCI(
+    FUN,
+    data,
+    reps = reps,
+    compute = "parallel"
+  )
+})
+
+# results
+rebootstrap(ci1)
+rebootstrap(ci2)
+
+# running time
+time_serial
+time_parallel
 ```
 
+**Comment:** According to the output above, the results are similar between the two methods: `serial` and `parallel`. For the running time, the serial version finished in about 2.38 seconds, while the parallel version took about 5.48 seconds. Although parallel processing can reduce computation time for expensive bootstrap statistics, it introduces substantial overhead: R must launch multiple worker processes, export the data and the function to each worker, and manage inter-process communication.
 
 ### problem 2-c
 ```{r p2c}
+dispCoef <- function(data) {
+  fit <- lm(mpg ~ cyl + disp + wt, data = data)
+  coef(fit)["disp"]
+}
 
+# serial
+time_serial <- system.time({
+  ci1_serial <- makeBootstrapCI(dispCoef, mtcars, reps = 1000, compute = "serial")
+})
+
+ci1_serial
+rebootstrap(ci1_serial)
+
+# parallel
+time_parallel <- system.time({
+  ci2_parallel <- makeBootstrapCI(dispCoef, mtcars, reps = 1000, compute = "parallel")
+})
+
+ci2_parallel
+rebootstrap(ci2_parallel)
+
+time_serial
+time_parallel
+```
+
+**Comment:** The serial bootstrap completed in about 0.29 seconds, while the parallel version required about 1.06 seconds. Although parallel processing can reduce computation time for expensive bootstrap operations, it has substantial startup overhead. R must launch several worker processes, export the data and function to each worker, and initialize the communication environment. In this task, each bootstrap iteration fits a very small linear regression to the 32-row mtcars dataset, which is extremely cheap to compute. Thus, the computation time saved by parallelism is much smaller than the fixed overhead of creating and managing the cluster, leading to a slower overall runtime.
+
+\newpage
+
+## Problem 3
+
+set up
+```{r setup-q3}
+# load data set
+source("https://dept.stat.lsa.umich.edu/~jerrick/courses/stat506_f25/ps06q3.R")
+
+library(lme4)
+library(dplyr)
+library(ggplot2)
 ```
 
 
-## Problem 3
+### problem 3-a
+```{r q3a}
+# Country list
+countries <- levels(df$country)
+
+# Storage
+model_list <- list()
+runtimes <- numeric(length(countries))
+forum_coefs <- data.frame(
+  country = countries,
+  estimate = NA,
+  se = NA
+)
+
+# Loop over countries
+for (i in seq_along(countries)) {
+  ct <- countries[i]
+  
+  df_ct <- df %>% 
+    filter(country == ct) %>%
+    mutate(
+      prior_gpa_z      = scale(prior_gpa),
+      forum_posts_z    = scale(forum_posts),
+      quiz_attempts_z  = scale(quiz_attempts)
+    )
+  
+  # Model formula
+  fml <- completed_course ~ prior_gpa_z + forum_posts_z + quiz_attempts_z +
+    (1 | device_type)
+  
+  # Fit + measure runtime
+  t <- system.time({
+    fit <- glmer(
+      fml,
+      data = df_ct,
+      family = binomial(),
+      control = glmerControl(optimizer = "bobyqa")
+    )
+  })
+  
+  runtimes[i] <- t["elapsed"]
+  model_list[[ct]] <- fit
+  
+  # Extract coefficient for forum_posts_z
+  est <- summary(fit)$coefficients["forum_posts_z", ]
+  forum_coefs$estimate[i] <- est["Estimate"]
+  forum_coefs$se[i]       <- est["Std. Error"]
+}
+
+# Show runtimes
+runtimes_df <- data.frame(
+  country = countries,
+  elapsed_time_sec = runtimes
+)
+
+# result
+forum_coefs
+
+# run time result
+runtimes_df
+
+# Visualization with 95% CI
+forum_coefs %>%
+  mutate(
+    lower = estimate - 1.96 * se,
+    upper = estimate + 1.96 * se
+  ) %>%
+  ggplot(aes(x = reorder(country, estimate), y = estimate)) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.15) +
+  coord_flip() +
+  labs(
+    title = "Effect of Forum Posts on Course Completion (per country)",
+    x = "Country",
+    y = "Coefficient Estimate (standardized)"
+  ) +
+  theme_minimal(base_size = 14)
+```
+
+**Comment:** Across all six countries, the effect of forum posts on course completion is positive. Although the magnitude varies by country, the estimates consistently suggest that students who contribute more to course forums are more likely to complete the course. As for the running time, fitting times varied substantially across countries. Countries with larger sample sizes (“US”, “India”, “Other”) required more time, whereas small-population countries (“Lithuania”, “Nigeria”) were much faster. This is consistent with the computational cost of fitting mixed-effects models increasing with data set size.
+
+### problem 3-b
+```{r q3b}
+t_total <- system.time({
+
+# Split
+df_split <- split(df, df$country)
+
+# Pre-standardize per country
+df_split <- lapply(df_split, function(d) {
+  d$prior_gpa_z     <- as.numeric(scale(d$prior_gpa))
+  d$forum_posts_z   <- as.numeric(scale(d$forum_posts))
+  d$quiz_attempts_z <- as.numeric(scale(d$quiz_attempts))
+  d
+})
+
+# Model formula
+fml <- completed_course ~ prior_gpa_z + forum_posts_z + quiz_attempts_z +
+  (1 | device_type)
+
+# Parallel fit
+num_cores <- min(6, detectCores())
+
+model_list_fast <- mclapply(
+  df_split,
+  function(dsub) glmer(
+    fml,
+    data = dsub,
+    family = binomial(),
+    control = glmerControl(optimizer = "bobyqa")
+  ),
+  mc.cores = num_cores
+)
+
+# Extract coefficients
+forum_est_fast <- sapply(model_list_fast, function(m) {
+  coef(summary(m))["forum_posts_z", "Estimate"]
+})
+
+forum_se_fast <- sapply(model_list_fast, function(m) {
+  coef(summary(m))["forum_posts_z", "Std. Error"]
+})
+
+})
+
+# report
+t_total
+forum_est_fast
+forum_se_fast
+```
+
+**Comment:** To reduce the total running time of the script, I implemented two key optimizations: Pre-splitting the dataset by country & Pre-standardizing predictors within each country
+
+Instead of calling `filter(country == ...)` inside each model fit, I split the full dataset once at the beginning using `split(df, df$country)`.
+This avoids repeating a large, expensive filtering operation six times. At the same time, For each country subset, I computed standardized predictors (prior_gpa_z, forum_posts_z, quiz_attempts_z) only once. In addition, I further reduced runtime by running the six country-specific glmer models in parallel using mclapply with 6 cores.
+
+Overall, the resualts are the same in two approaches, but the total runtime of the entire optimized script is 32.306 seconds, which is substantially faster than the cumulative runtime in part (a).
+
+\newpage
 
 ## Problem 4
 
