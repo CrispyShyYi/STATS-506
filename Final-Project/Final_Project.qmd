@@ -144,6 +144,7 @@ print(final_results_bernoulli)
 # 1. KS
 p1 <- ggplot(final_results_bernoulli, aes(x=n, y=ks_stat, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   scale_x_log10() +
   labs(title="KS statistic vs n", y="KS statistic", x="n (log scale)")
 
@@ -151,31 +152,37 @@ p1 <- ggplot(final_results_bernoulli, aes(x=n, y=ks_stat, color=dist)) +
 p2 <- ggplot(final_results_bernoulli, aes(x=n, y=coverage, color=dist)) +
   geom_line() + geom_point() +
   geom_hline(yintercept=0.95, linetype="dashed") +
+  geom_vline(xintercept = 30, color = "red") + 
   labs(title="95% CI Coverage", y="Coverage", x="n")
 
 # 3. QQ R2
 p3 <- ggplot(final_results_bernoulli, aes(x=n, y=qq_r2, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   labs(title="QQ-plot R^2 vs n", y="R^2", x="n")
 
 # 4. Tail error
 p4 <- ggplot(final_results_bernoulli, aes(x=n, y=tail_error, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   labs(title="Tail Probability Error", y="|P(Z>2)-P(N>2)|", x="n")
 
 # 5. Skewness
 p5 <- ggplot(final_results_bernoulli, aes(x=n, y=skewness, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   labs(title="Skewness of Z", y="Skewness", x="n")
 
 # 6. Kurtosis
 p6 <- ggplot(final_results_bernoulli, aes(x=n, y=kurtosis, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   labs(title="Kurtosis of Z", y="Kurtosis", x="n")
 
 # 7. Shapiro-Wilk
 p7 <- ggplot(final_results_bernoulli, aes(x=n, y=shapiro_w, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   labs(title="Shapiro-Wilk", y="W statistic", x="n")
 
 # Combine 
@@ -233,38 +240,45 @@ print(final_results_exp)
 # 1. KS
 p1 <- ggplot(final_results_exp, aes(x=n, y=ks_stat, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   scale_x_log10() +
   labs(title="KS statistic vs n", y="KS statistic", x="n (log scale)")
 
 # 2. Coverage
 p2 <- ggplot(final_results_exp, aes(x=n, y=coverage, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   geom_hline(yintercept=0.95, linetype="dashed") +
   labs(title="95% CI Coverage", y="Coverage", x="n")
 
 # 3. QQ R2
 p3 <- ggplot(final_results_exp, aes(x=n, y=qq_r2, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   labs(title="QQ-plot R^2 vs n", y="R^2", x="n")
 
 # 4. Tail error
 p4 <- ggplot(final_results_exp, aes(x=n, y=tail_error, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   labs(title="Tail Probability Error", y="|P(Z>2)-P(N>2)|", x="n")
 
 # 5. Skewness
 p5 <- ggplot(final_results_exp, aes(x=n, y=skewness, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   labs(title="Skewness of Z", y="Skewness", x="n")
 
 # 6. Kurtosis
 p6 <- ggplot(final_results_exp, aes(x=n, y=kurtosis, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   labs(title="Kurtosis of Z", y="Kurtosis", x="n")
 
 # 7. Shapiro-Wilk
 p7 <- ggplot(final_results_exp, aes(x=n, y=shapiro_w, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   labs(title="Shapiro-Wilk", y="W statistic", x="n")
 
 # Combine 
@@ -324,38 +338,45 @@ print(final_results_lognormal)
 # 1. KS
 p1 <- ggplot(final_results_lognormal, aes(x=n, y=ks_stat, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   scale_x_log10() +
   labs(title="KS statistic vs n", y="KS statistic", x="n (log scale)")
 
 # 2. Coverage
 p2 <- ggplot(final_results_lognormal, aes(x=n, y=coverage, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   geom_hline(yintercept=0.95, linetype="dashed") +
   labs(title="95% CI Coverage", y="Coverage", x="n")
 
 # 3. QQ R2
 p3 <- ggplot(final_results_lognormal, aes(x=n, y=qq_r2, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   labs(title="QQ-plot R^2 vs n", y="R^2", x="n")
 
 # 4. Tail error
 p4 <- ggplot(final_results_lognormal, aes(x=n, y=tail_error, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   labs(title="Tail Probability Error", y="|P(Z>2)-P(N>2)|", x="n")
 
 # 5. Skewness
 p5 <- ggplot(final_results_lognormal, aes(x=n, y=skewness, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   labs(title="Skewness of Z", y="Skewness", x="n")
 
 # 6. Kurtosis
 p6 <- ggplot(final_results_lognormal, aes(x=n, y=kurtosis, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   labs(title="Kurtosis of Z", y="Kurtosis", x="n")
 
 # 7. Shapiro-Wilk
 p7 <- ggplot(final_results_lognormal, aes(x=n, y=shapiro_w, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   labs(title="Shapiro-Wilk", y="W statistic", x="n")
 
 # Combine 
@@ -419,38 +440,45 @@ print(final_results_t)
 # 1. KS
 p1 <- ggplot(final_results_t, aes(x=n, y=ks_stat, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   scale_x_log10() +
   labs(title="KS statistic vs n", y="KS statistic", x="n (log scale)")
 
 # 2. Coverage
 p2 <- ggplot(final_results_t, aes(x=n, y=coverage, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   geom_hline(yintercept=0.95, linetype="dashed") +
   labs(title="95% CI Coverage", y="Coverage", x="n")
 
 # 3. QQ R2
 p3 <- ggplot(final_results_t, aes(x=n, y=qq_r2, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   labs(title="QQ-plot R^2 vs n", y="R^2", x="n")
 
 # 4. Tail error
 p4 <- ggplot(final_results_t, aes(x=n, y=tail_error, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   labs(title="Tail Probability Error", y="|P(Z>2)-P(N>2)|", x="n")
 
 # 5. Skewness
 p5 <- ggplot(final_results_t, aes(x=n, y=skewness, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   labs(title="Skewness of Z", y="Skewness", x="n")
 
 # 6. Kurtosis
 p6 <- ggplot(final_results_t, aes(x=n, y=kurtosis, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   labs(title="Kurtosis of Z", y="Kurtosis", x="n")
 
 # 7. Shapiro-Wilk
 p7 <- ggplot(final_results_t, aes(x=n, y=shapiro_w, color=dist)) +
   geom_line() + geom_point() +
+  geom_vline(xintercept = 30, color = "red") + 
   labs(title="Shapiro-Wilk", y="W statistic", x="n")
 
 # Combine 
