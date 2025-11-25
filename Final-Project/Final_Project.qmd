@@ -1,0 +1,465 @@
+---
+title: "Final Project"
+author: "Jialiang Wu"
+format:
+  html:
+    theme: default
+    page-layout: article
+    code-fold: true
+    code-summary: "Show the code"
+    embed-resources: true
+editor: visual
+---
+
+For source files and data, see my GitHub repo: [STATS-506-Problem-Final-Project](https://github.com/CrispyShyYi/STATS-506-Problem-Sets/tree/main/Final-Project)
+
+## Setup
+
+```{r library}
+library(tidyverse)
+library(signal)   # for window functions
+library(pracma)
+library(dplyr)
+library(ggplot2)
+library(moments)      # skewness & kurtosis
+library(nortest)      # Anderson-Darling
+library(stats)
+library(patchwork)
+```
+
+## Functions
+```{r functions}
+# Monte Carlo CLT simulation
+simulate_clt <- function(dist_fun, n, B=2000, Npop=100000) {
+  
+  # Generate "population"
+  population <- dist_fun(Npop)
+  mu <- mean(population)
+  sigma <- sd(population)
+  
+  z_stats <- numeric(B)
+  cover <- logical(B)
+  
+  # Monte Carlo simulation
+  for (b in 1:B) {
+    sample_b <- sample(population, n, replace = TRUE)
+    m <- mean(sample_b)
+    se <- sigma / sqrt(n)
+    
+    # standardized mean
+    z_stats[b] <- (m - mu) / se
+    
+    # 95% CI coverage
+    ci_low <- m - 1.96 * se
+    ci_high <- m + 1.96 * se
+    cover[b] <- (mu >= ci_low & mu <= ci_high)
+  }
+  
+  # normality metrics
+  
+  # (1) QQ-plot R^2
+  probs <- ppoints(200)
+  q_emp <- quantile(z_stats, probs)
+  q_the <- qnorm(probs)
+  qq_r2 <- summary(lm(q_emp ~ q_the))$r.squared
+  
+  # (2) Shapiro-Wilk
+  sw_stat <- shapiro.test(z_stats)$statistic
+  
+  # (3) Skewness & Kurtosis
+  skew_z <- skewness(z_stats)
+  kurt_z <- kurtosis(z_stats)
+  
+  # (4) Tail probability error
+  p_z <- mean(z_stats > 2)
+  p_norm <- pnorm(2, lower.tail = FALSE)
+  tail_error <- abs(p_z - p_norm)
+  
+  # KS statistic
+  ks_res <- suppressWarnings(ks.test(z_stats, "pnorm"))
+  
+  # return
+  tibble(
+    ks_stat = as.numeric(ks_res$statistic),
+    ks_pval = ks_res$p.value,
+    coverage = mean(cover),
+    qq_r2 = qq_r2,
+    shapiro_w = sw_stat,
+    skewness = skew_z,
+    kurtosis = kurt_z,
+    tail_error = tail_error
+  )
+}
+
+# Run simulation for all distributions & sample sizes
+n_list <- seq(10, 500, by = 10)
+```
+
+\newpage
+
+## Bernoulli
+```{r bernoulli}
+# define used distribution
+r_bernoulli_0.1 <- function(N) rbinom(N, 1, 0.1)
+r_bernoulli_0.3 <- function(N) rbinom(N, 1, 0.3)
+r_bernoulli_0.5 <- function(N) rbinom(N, 1, 0.5)
+r_bernoulli_0.7 <- function(N) rbinom(N, 1, 0.7)
+r_bernoulli_0.9 <- function(N) rbinom(N, 1, 0.9)
+
+
+bernoulli_dist_list <- list(
+  bernoulli_0.1 = r_bernoulli_0.1,
+  bernoulli_0.3 = r_bernoulli_0.3,
+  bernoulli_0.5 = r_bernoulli_0.5,
+  bernoulli_0.7 = r_bernoulli_0.7,
+  bernoulli_0.9 = r_bernoulli_0.9
+)
+
+results <- list()
+
+for (dist_name in names(bernoulli_dist_list)) {
+  for (n in n_list) {
+    cat("Running:", dist_name, "n=", n, "\n")
+    res <- simulate_clt(bernoulli_dist_list[[dist_name]], n, B=2000)
+    res$dist <- dist_name
+    res$n <- n
+    results[[length(results)+1]] <- res
+  }
+}
+
+final_results_bernoulli <- bind_rows(results)
+
+# show results
+print(final_results_bernoulli)
+
+# Visualization
+
+# 1. KS
+p1 <- ggplot(final_results_bernoulli, aes(x=n, y=ks_stat, color=dist)) +
+  geom_line() + geom_point() +
+  scale_x_log10() +
+  labs(title="KS statistic vs n", y="KS statistic", x="n (log scale)")
+
+# 2. Coverage
+p2 <- ggplot(final_results_bernoulli, aes(x=n, y=coverage, color=dist)) +
+  geom_line() + geom_point() +
+  geom_hline(yintercept=0.95, linetype="dashed") +
+  labs(title="95% CI Coverage", y="Coverage", x="n")
+
+# 3. QQ R2
+p3 <- ggplot(final_results_bernoulli, aes(x=n, y=qq_r2, color=dist)) +
+  geom_line() + geom_point() +
+  labs(title="QQ-plot R^2 vs n", y="R^2", x="n")
+
+# 4. Tail error
+p4 <- ggplot(final_results_bernoulli, aes(x=n, y=tail_error, color=dist)) +
+  geom_line() + geom_point() +
+  labs(title="Tail Probability Error", y="|P(Z>2)-P(N>2)|", x="n")
+
+# 5. Skewness
+p5 <- ggplot(final_results_bernoulli, aes(x=n, y=skewness, color=dist)) +
+  geom_line() + geom_point() +
+  labs(title="Skewness of Z", y="Skewness", x="n")
+
+# 6. Kurtosis
+p6 <- ggplot(final_results_bernoulli, aes(x=n, y=kurtosis, color=dist)) +
+  geom_line() + geom_point() +
+  labs(title="Kurtosis of Z", y="Kurtosis", x="n")
+
+# 7. Shapiro-Wilk
+p7 <- ggplot(final_results_bernoulli, aes(x=n, y=shapiro_w, color=dist)) +
+  geom_line() + geom_point() +
+  labs(title="Shapiro-Wilk", y="W statistic", x="n")
+
+# Combine 
+plot_group1 <- (p1 | p2) /
+               (p3 | p4) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom")
+
+plot_group2 <- (p5 | p6) /
+               (p7) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom")
+
+# display
+plot_group1
+plot_group2
+
+# save results
+ggsave("bernoulli_metrics_group1.png", plot_group1, width=10, height=8)
+ggsave("bernoulli_metrics_group2.png", plot_group2, width=10, height=8)
+```
+
+\newpage
+
+## Exponential
+```{r exponential}
+r_exponential_1 <- function(N) rexp(N, 1)
+r_exponential_3 <- function(N) rexp(N, 3)
+
+exp_dist_list <- list(
+  exponential_1 = r_exponential_1,
+  exponential_3 = r_exponential_3
+)
+
+results <- list()
+
+for (dist_name in names(exp_dist_list)) {
+  for (n in n_list) {
+    cat("Running:", dist_name, "n=", n, "\n")
+    res <- simulate_clt(exp_dist_list[[dist_name]], n, B=2000)
+    res$dist <- dist_name
+    res$n <- n
+    results[[length(results)+1]] <- res
+  }
+}
+
+final_results_exp <- bind_rows(results)
+
+# show results
+print(final_results_exp)
+
+# Visualization
+
+# 1. KS
+p1 <- ggplot(final_results_exp, aes(x=n, y=ks_stat, color=dist)) +
+  geom_line() + geom_point() +
+  scale_x_log10() +
+  labs(title="KS statistic vs n", y="KS statistic", x="n (log scale)")
+
+# 2. Coverage
+p2 <- ggplot(final_results_exp, aes(x=n, y=coverage, color=dist)) +
+  geom_line() + geom_point() +
+  geom_hline(yintercept=0.95, linetype="dashed") +
+  labs(title="95% CI Coverage", y="Coverage", x="n")
+
+# 3. QQ R2
+p3 <- ggplot(final_results_exp, aes(x=n, y=qq_r2, color=dist)) +
+  geom_line() + geom_point() +
+  labs(title="QQ-plot R^2 vs n", y="R^2", x="n")
+
+# 4. Tail error
+p4 <- ggplot(final_results_exp, aes(x=n, y=tail_error, color=dist)) +
+  geom_line() + geom_point() +
+  labs(title="Tail Probability Error", y="|P(Z>2)-P(N>2)|", x="n")
+
+# 5. Skewness
+p5 <- ggplot(final_results_exp, aes(x=n, y=skewness, color=dist)) +
+  geom_line() + geom_point() +
+  labs(title="Skewness of Z", y="Skewness", x="n")
+
+# 6. Kurtosis
+p6 <- ggplot(final_results_exp, aes(x=n, y=kurtosis, color=dist)) +
+  geom_line() + geom_point() +
+  labs(title="Kurtosis of Z", y="Kurtosis", x="n")
+
+# 7. Shapiro-Wilk
+p7 <- ggplot(final_results_exp, aes(x=n, y=shapiro_w, color=dist)) +
+  geom_line() + geom_point() +
+  labs(title="Shapiro-Wilk", y="W statistic", x="n")
+
+# Combine 
+plot_group1 <- (p1 | p2) /
+               (p3 | p4) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom")
+
+plot_group2 <- (p5 | p6) /
+               (p7) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom")
+
+# display
+plot_group1
+plot_group2
+
+# save results
+ggsave("exponential_metrics_group1.png", plot_group1, width=10, height=8)
+ggsave("exponential_metrics_group2.png", plot_group2, width=10, height=8)
+```
+
+\newpage
+
+## Lognormal
+```{r lognormal}
+r_lognormal_0.5 <- function(N) rlnorm(N, 0, 0.5)
+r_lognormal_1 <- function(N) rlnorm(N, 0, 1)
+r_lognormal_1.5 <- function(N) rlnorm(N, 0, 1.5)
+
+lognormal_dist_list <- list(
+  lognormal_0.5 = r_lognormal_0.5,
+  lognormal_1 = r_lognormal_1,
+  lognormal_1.5 = r_lognormal_1.5
+)
+
+results <- list()
+
+for (dist_name in names(lognormal_dist_list)) {
+  for (n in n_list) {
+    cat("Running:", dist_name, "n=", n, "\n")
+    res <- simulate_clt(lognormal_dist_list[[dist_name]], n, B=2000)
+    res$dist <- dist_name
+    res$n <- n
+    results[[length(results)+1]] <- res
+  }
+}
+
+final_results_lognormal <- bind_rows(results)
+
+# show results
+print(final_results_lognormal)
+
+# Visualization
+
+# 1. KS
+p1 <- ggplot(final_results_lognormal, aes(x=n, y=ks_stat, color=dist)) +
+  geom_line() + geom_point() +
+  scale_x_log10() +
+  labs(title="KS statistic vs n", y="KS statistic", x="n (log scale)")
+
+# 2. Coverage
+p2 <- ggplot(final_results_lognormal, aes(x=n, y=coverage, color=dist)) +
+  geom_line() + geom_point() +
+  geom_hline(yintercept=0.95, linetype="dashed") +
+  labs(title="95% CI Coverage", y="Coverage", x="n")
+
+# 3. QQ R2
+p3 <- ggplot(final_results_lognormal, aes(x=n, y=qq_r2, color=dist)) +
+  geom_line() + geom_point() +
+  labs(title="QQ-plot R^2 vs n", y="R^2", x="n")
+
+# 4. Tail error
+p4 <- ggplot(final_results_lognormal, aes(x=n, y=tail_error, color=dist)) +
+  geom_line() + geom_point() +
+  labs(title="Tail Probability Error", y="|P(Z>2)-P(N>2)|", x="n")
+
+# 5. Skewness
+p5 <- ggplot(final_results_lognormal, aes(x=n, y=skewness, color=dist)) +
+  geom_line() + geom_point() +
+  labs(title="Skewness of Z", y="Skewness", x="n")
+
+# 6. Kurtosis
+p6 <- ggplot(final_results_lognormal, aes(x=n, y=kurtosis, color=dist)) +
+  geom_line() + geom_point() +
+  labs(title="Kurtosis of Z", y="Kurtosis", x="n")
+
+# 7. Shapiro-Wilk
+p7 <- ggplot(final_results_lognormal, aes(x=n, y=shapiro_w, color=dist)) +
+  geom_line() + geom_point() +
+  labs(title="Shapiro-Wilk", y="W statistic", x="n")
+
+# Combine 
+plot_group1 <- (p1 | p2) /
+               (p3 | p4) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom")
+
+plot_group2 <- (p5 | p6) /
+               (p7) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom")
+
+# display
+plot_group1
+plot_group2
+
+# save results
+ggsave("lognormal_metrics_group1.png", plot_group1, width=10, height=8)
+ggsave("lognormall_metrics_group2.png", plot_group2, width=10, height=8)
+```
+
+\newpage
+
+## t distribution
+```{r t} 
+r_t1 <- function(N) rt(N, 1)
+r_t2 <- function(N) rt(N, 2)
+r_t3 <- function(N) rt(N, 3)
+r_t4 <- function(N) rt(N, 4)
+r_t5 <- function(N) rt(N, 5)
+
+t_dist_list <- list(
+  t_1 = r_t1,
+  t_2 = r_t2,
+  t_3 = r_t3,
+  t_4 = r_t4,
+  t_5 = r_t5
+)
+
+results <- list()
+
+for (dist_name in names(t_dist_list)) {
+  for (n in n_list) {
+    cat("Running:", dist_name, "n=", n, "\n")
+    res <- simulate_clt(t_dist_list[[dist_name]], n, B=2000)
+    res$dist <- dist_name
+    res$n <- n
+    results[[length(results)+1]] <- res
+  }
+}
+
+final_results_t <- bind_rows(results)
+
+# show results
+print(final_results_t)
+
+# Visualization
+
+# 1. KS
+p1 <- ggplot(final_results_t, aes(x=n, y=ks_stat, color=dist)) +
+  geom_line() + geom_point() +
+  scale_x_log10() +
+  labs(title="KS statistic vs n", y="KS statistic", x="n (log scale)")
+
+# 2. Coverage
+p2 <- ggplot(final_results_t, aes(x=n, y=coverage, color=dist)) +
+  geom_line() + geom_point() +
+  geom_hline(yintercept=0.95, linetype="dashed") +
+  labs(title="95% CI Coverage", y="Coverage", x="n")
+
+# 3. QQ R2
+p3 <- ggplot(final_results_t, aes(x=n, y=qq_r2, color=dist)) +
+  geom_line() + geom_point() +
+  labs(title="QQ-plot R^2 vs n", y="R^2", x="n")
+
+# 4. Tail error
+p4 <- ggplot(final_results_t, aes(x=n, y=tail_error, color=dist)) +
+  geom_line() + geom_point() +
+  labs(title="Tail Probability Error", y="|P(Z>2)-P(N>2)|", x="n")
+
+# 5. Skewness
+p5 <- ggplot(final_results_t, aes(x=n, y=skewness, color=dist)) +
+  geom_line() + geom_point() +
+  labs(title="Skewness of Z", y="Skewness", x="n")
+
+# 6. Kurtosis
+p6 <- ggplot(final_results_t, aes(x=n, y=kurtosis, color=dist)) +
+  geom_line() + geom_point() +
+  labs(title="Kurtosis of Z", y="Kurtosis", x="n")
+
+# 7. Shapiro-Wilk
+p7 <- ggplot(final_results_t, aes(x=n, y=shapiro_w, color=dist)) +
+  geom_line() + geom_point() +
+  labs(title="Shapiro-Wilk", y="W statistic", x="n")
+
+# Combine 
+plot_group1 <- (p1 | p2) /
+               (p3 | p4) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom")
+
+plot_group2 <- (p5 | p6) /
+               (p7) +
+  plot_layout(guides = "collect") &
+  theme(legend.position = "bottom")
+
+# display
+plot_group1
+plot_group2
+
+# save results
+ggsave("t_metrics_group1.png", plot_group1, width=10, height=8)
+ggsave("t_metrics_group2.png", plot_group2, width=10, height=8)
+```
+
