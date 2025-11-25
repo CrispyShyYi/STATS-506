@@ -93,7 +93,12 @@ simulate_clt <- function(dist_fun, n, B=2000, Npop=100000) {
 }
 
 # Run simulation for all distributions & sample sizes
-n_list <- seq(10, 500, by = 10)
+n_list <- c(
+  2, 3, 4, 5, 8,
+  10, 15, 20, 30, 40, 50,
+  75, 100, 150, 200,
+  300, 400, 500
+)
 ```
 
 \newpage
