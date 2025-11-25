@@ -28,6 +28,7 @@ library(patchwork)
 ```
 
 ## Functions
+
 ```{r functions}
 # Monte Carlo CLT simulation
 simulate_clt <- function(dist_fun, n, B=2000, Npop=100000) {
@@ -98,6 +99,7 @@ n_list <- seq(10, 500, by = 10)
 \newpage
 
 ## Bernoulli
+
 ```{r bernoulli}
 # define used distribution
 r_bernoulli_0.1 <- function(N) rbinom(N, 1, 0.1)
@@ -194,6 +196,7 @@ ggsave("bernoulli_metrics_group2.png", plot_group2, width=10, height=8)
 \newpage
 
 ## Exponential
+
 ```{r exponential}
 r_exponential_1 <- function(N) rexp(N, 1)
 r_exponential_3 <- function(N) rexp(N, 3)
@@ -282,6 +285,7 @@ ggsave("exponential_metrics_group2.png", plot_group2, width=10, height=8)
 \newpage
 
 ## Lognormal
+
 ```{r lognormal}
 r_lognormal_0.5 <- function(N) rlnorm(N, 0, 0.5)
 r_lognormal_1 <- function(N) rlnorm(N, 0, 1)
@@ -372,7 +376,8 @@ ggsave("lognormall_metrics_group2.png", plot_group2, width=10, height=8)
 \newpage
 
 ## t distribution
-```{r t} 
+
+```{r t}
 r_t1 <- function(N) rt(N, 1)
 r_t2 <- function(N) rt(N, 2)
 r_t3 <- function(N) rt(N, 3)
@@ -462,4 +467,3 @@ plot_group2
 ggsave("t_metrics_group1.png", plot_group1, width=10, height=8)
 ggsave("t_metrics_group2.png", plot_group2, width=10, height=8)
 ```
-
